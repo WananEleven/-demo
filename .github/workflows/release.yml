@@ -1,0 +1,37 @@
+name: Publish Android APK
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "release-assets/parts/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ hashFiles('release-assets/parts/mushroom-v1.1.part-*') != '' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Rebuild and verify APK
+        shell: bash
+        run: |
+          cat release-assets/parts/mushroom-v1.1.part-* > mushroom-kingdom-v1.1.apk
+          echo "B63122A4CBE34DF46D2CC5608ECCB58ABB47E2300F7A1830B6A145F59D84C44F  mushroom-kingdom-v1.1.apk" | sha256sum --check
+      - name: Publish release
+        shell: bash
+        run: |
+          if gh release view v1.1 >/dev/null 2>&1; then
+            gh release upload v1.1 mushroom-kingdom-v1.1.apk --clobber
+          else
+            gh release create v1.1 mushroom-kingdom-v1.1.apk \
+              --title "张三的蘑菇王国 v1.1" \
+              --notes "用于作品展示的 Android Demo。最低支持 Android 7.0。识别结果仅供科普参考，不能替代专业鉴定。"
+          fi
