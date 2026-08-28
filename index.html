@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#173f35" />
+    <meta
+      name="description"
+      content="张三的蘑菇王国：面向家庭采摘场景的蘑菇识别、图鉴与记录 Demo。"
+    />
+    <meta property="og:title" content="张三的蘑菇王国 · 产品 Demo" />
+    <meta
+      property="og:description"
+      content="在浏览器中直接体验蘑菇识别、图鉴与家庭采摘记录。"
+    />
+    <meta
+      property="og:image"
+      content="https://wananeleven.github.io/-demo/app/user-icons/book-garden.webp"
+    />
+    <meta property="og:type" content="website" />
+    <title>张三的蘑菇王国 · 产品 Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="返回顶部">
+        <span class="brand-mark" aria-hidden="true">菌</span>
+        <span>张三的蘑菇王国</span>
+      </a>
+      <nav aria-label="页面导航">
+        <a href="#features">功能</a>
+        <a href="#experience">体验</a>
+        <a class="nav-cta" href="./app/">打开 Demo</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> PRODUCT DEMO · V1.1</p>
+          <h1>把每一次上山，<br />变成一本会生长的<span>蘑菇日记</span></h1>
+          <p class="hero-intro">
+            一款为家庭采摘场景设计的移动端应用 Demo。通过图片辅助识别、地方物种图鉴与日历记录，留下每一次发现，也把安全提醒放在第一位。
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="./app/">
+              立即在线体验 <span aria-hidden="true">↗</span>
+            </a>
+            <a
+              class="button button-secondary"
+              href="https://github.com/WananEleven/-demo/releases/latest/download/mushroom-kingdom-v1.1.apk"
+            >
+              下载 Android APK
+            </a>
+          </div>
+          <p class="compatibility">无需登录 · 数据保存在本地浏览器 · 支持手机与电脑</p>
+        </div>
+
+        <div class="hero-visual" aria-label="应用界面预览">
+          <div class="sun-orbit"></div>
+          <div class="phone-frame">
+            <div class="phone-speaker"></div>
+            <iframe
+              src="./app/"
+              title="张三的蘑菇王国交互演示"
+              loading="eager"
+            ></iframe>
+          </div>
+          <div class="floating-note note-top">
+            <strong>17 种</strong>
+            <span>地方物种图鉴</span>
+          </div>
+          <div class="floating-note note-bottom">
+            <strong>本地优先</strong>
+            <span>记录留在设备中</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-section" id="features">
+        <div class="section-heading">
+          <p class="eyebrow"><span></span> CORE EXPERIENCE</p>
+          <h2>从“看见”到“记住”</h2>
+          <p>围绕采摘前、中、后的真实场景，串联识别、安全参考与家庭记录。</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card feature-identify">
+            <span class="feature-number">01</span>
+            <div class="feature-icon" aria-hidden="true">⌁</div>
+            <h3>图片辅助识别</h3>
+            <p>上传或拍摄蘑菇照片，获得候选结果与置信度，帮助快速缩小判断范围。</p>
+            <span class="feature-tag">TensorFlow.js · MobileNet</span>
+          </article>
+          <article class="feature-card feature-guide">
+            <span class="feature-number">02</span>
+            <div class="feature-icon" aria-hidden="true">◎</div>
+            <h3>地方物种图鉴</h3>
+            <p>整理黄水镇常见重点种的观察特征、出现季节与风险提示。</p>
+            <span class="feature-tag">17 种示例 · 来源可追溯</span>
+          </article>
+          <article class="feature-card feature-record">
+            <span class="feature-number">03</span>
+            <div class="feature-icon" aria-hidden="true">▦</div>
+            <h3>家庭采摘记录</h3>
+            <p>用日历沉淀数量、照片、心情与同行者，让零散经历成为共同记忆。</p>
+            <span class="feature-tag">本地存储 · 多图记录</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="experience-section" id="experience">
+        <div class="experience-art">
+          <img
+            src="./app/user-icons/book-garden.webp"
+            alt="一本长出花草的手绘书本"
+          />
+        </div>
+        <div class="experience-copy">
+          <p class="eyebrow light"><span></span> TRY IT YOURSELF</p>
+          <h2>现在，就从第一朵开始</h2>
+          <p>
+            完整 Demo 已适配浏览器。你可以体验识别流程、翻阅图鉴，也可以创建一条属于自己的采摘记录。
+          </p>
+          <a class="button button-light" href="./app/">进入完整 Demo <span aria-hidden="true">→</span></a>
+          <p class="safety-note">提示：识别结果仅作科普参考，野生菌食用请以专业鉴定为准。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>
+        <strong>张三的蘑菇王国</strong>
+        <span>移动端产品 Demo · Version 1.1</span>
+      </div>
+      <a href="https://github.com/WananEleven/-demo">View on GitHub ↗</a>
+    </footer>
+  </body>
+</html>

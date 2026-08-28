@@ -1,0 +1,23 @@
+html.embedded-preview body {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+html.embedded-preview .app-background {
+  width: 100%;
+  min-height: 100vh;
+  padding: 0;
+}
+
+html.embedded-preview .phone-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html.embedded-preview .topbar {
+  padding-top: 38px;
+}
