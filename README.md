@@ -6,7 +6,7 @@
 
 - [打开产品展示页](https://wananeleven.github.io/-demo/)
 - [直接进入完整 Demo](https://wananeleven.github.io/-demo/app/)
-- [下载 Android APK](https://github.com/WananEleven/-demo/releases/latest/download/mushroom-kingdom-v1.1.apk)
+- [下载 Android APK](https://github.com/WananEleven/-demo/releases/latest/download/mushroom-kingdom-v1.1.1.apk)
 
 ## 主要功能
 
@@ -18,7 +18,9 @@
 
 ## 版本
 
-当前展示版本：`1.1`
+当前展示版本：`1.1.1`
+
+本次更新修复了“记录今天”日期固定的问题，并将识别模型改为随网页与 APK 本地加载；模型、图片和联网请求均增加超时与失败重试，明显的猫狗等非蘑菇照片不会再被强行匹配到蘑菇图鉴。
 
 本仓库用于作品与产品 Demo 展示，不包含原始工程源代码。
 
