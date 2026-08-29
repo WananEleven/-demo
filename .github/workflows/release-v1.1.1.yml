@@ -1,0 +1,25 @@
+name: Publish v1.1.1 Release
+
+on:
+  push:
+    paths:
+      - release-assets/mushroom-kingdom-v1.1.1.apk
+      - .github/workflows/release-v1.1.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify APK and create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "c61c5b8d0dccadcb3c9d5ac26cc8c56b15c575f292a1f68495a01260b326c0b4  release-assets/mushroom-kingdom-v1.1.1.apk" | sha256sum --check
+          gh release create v1.1.1 release-assets/mushroom-kingdom-v1.1.1.apk \
+            --title "蘑菇王国 Demo v1.1.1" \
+            --notes "修复记录今天始终显示固定日期的问题；将 MobileNet 模型随 APK 本地打包，解决首次识别依赖 TensorFlow Hub 而长时间无结果的问题；增加图片、模型、联网搜索与翻译超时及失败重试；明显的猫狗等非蘑菇照片不再强行匹配蘑菇图鉴。识别结果仅供产品演示与科普参考，不能作为食用依据。"
