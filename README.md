@@ -6,21 +6,21 @@
 
 - [打开产品展示页](https://wananeleven.github.io/-demo/)
 - [直接进入完整 Demo](https://wananeleven.github.io/-demo/app/)
-- [下载 Android APK](https://github.com/WananEleven/-demo/releases/latest/download/mushroom-kingdom-v1.1.1.apk)
+- [下载 Android APK](https://github.com/WananEleven/-demo/releases/latest/download/mushroom-kingdom-v1.1.apk)
 
 ## 主要功能
 
 - 图片辅助识别：上传或拍摄蘑菇照片，获取候选结果与置信度。
+- 百度联网补充识别：本地图鉴低置信时，经 CFC 调用百度“看图识万物”，展示真实候选、描述、搜索资料和百科链接。
 - 地方物种图鉴：查看黄水镇常见重点种、观察特征、出现季节和风险提示。
 - 家庭采摘记录：按日期记录数量、照片、心情、同行者与备注。
+
+首次在 Android App 中长按首页标题 5 秒，进入“识别服务设置”，填写识别服务地址和百度 API Key。密钥仅保存在本手机，不会包含在网页、APK 默认配置或本仓库中。
 
 > 识别结果仅用于科普与产品演示，不能替代专业鉴定。野生菌食用请遵循当地官方安全指引。
 
 ## 版本
 
-当前展示版本：`1.1.1`
-
-本次更新修复了“记录今天”日期固定的问题，并将识别模型改为随网页与 APK 本地加载；模型、图片和联网请求均增加超时与失败重试，明显的猫狗等非蘑菇照片不会再被强行匹配到蘑菇图鉴。
+当前展示版本：`1.1`
 
 本仓库用于作品与产品 Demo 展示，不包含原始工程源代码。
-

@@ -1,0 +1,14 @@
+.private/
+cfc/
+dist/
+apk-staging/
+apk-analysis/
+tools/
+node_modules/
+*.apk
+scripts/
+app/assets/*.min.js
+app/guide-images/*.png
+app/user-icons/*.jpg
+app/user-icons/*.png
+app/user-moods/*.jpg
