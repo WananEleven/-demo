@@ -1,0 +1,6 @@
+.detail-list li {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  word-break: break-word;
+}

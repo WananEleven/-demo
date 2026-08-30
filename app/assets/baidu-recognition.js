@@ -204,6 +204,7 @@ export function parseBaiduSse(text) {
 function makeResult(parsed, guideEntries, localCandidates) {
   const nearby = (localCandidates || []).slice(0, 3);
   const referenceImages = nearby.map((item) => item.entry?.images?.[0]).filter(Boolean);
+  const descriptionLines = formatDescriptionLines(parsed.description);
   if (parsed.notMushroom) {
     return {
       status: "not_mushroom",
@@ -211,7 +212,7 @@ function makeResult(parsed, guideEntries, localCandidates) {
       subtitle: "百度联网识别判断画面主体更像其他物体，因此没有强行套用蘑菇图鉴。",
       warning_message: "如果要识别蘑菇，请让蘑菇主体占据画面中央，并拍清菌盖、菌柄和菌褶；野生菌不要仅凭照片决定食用。",
       reference_images: [],
-      feature_summary: [parsed.description || "百度没有把画面主体判断为蘑菇。", "本次已停止强行匹配蘑菇图鉴，避免产生误导。"],
+      feature_summary: [...(descriptionLines.length ? descriptionLines : ["百度没有把画面主体判断为蘑菇。"]), "本次已停止强行匹配蘑菇图鉴，避免产生误导。"],
       similar_species: [],
       external_results: [],
       external_status: "not_needed",
@@ -225,12 +226,28 @@ function makeResult(parsed, guideEntries, localCandidates) {
     subtitle: `已先与图鉴中的 ${guideEntries.length} 个种类比对，再调用百度看图识万物补充候选。`,
     warning_message: "照片识别和联网资料都不能作为食用依据；无法由专业人员明确确认时，请不要采食。",
     reference_images: referenceImages,
-    feature_summary: [localLine, parsed.description || "百度未返回详细描述。", "候选名称、搜索资料和百科链接均来自百度联网接口，仅供继续核对。"],
+    feature_summary: [localLine, ...(descriptionLines.length ? descriptionLines : ["百度未返回详细描述。"]), "候选名称、搜索资料和百科链接均来自百度联网接口，仅供继续核对。"],
     similar_species: parsed.candidates,
     external_results: parsed.external,
     external_status: parsed.external.length ? "ready" : "empty",
     source_label: "百度看图识万物 · 联网补充",
   };
+}
+
+function formatDescriptionLines(value) {
+  const text = String(value || "")
+    .replace(/\r/g, "")
+    .replace(/#{1,6}\s*/g, "\n")
+    .replace(/\*\*/g, "")
+    .replace(/(^|\s)\*\s+(?=\S)/g, "\n")
+    .replace(/\*/g, "")
+    .replace(/\s+(?=\d+[.、]\s*[^\d])/g, "\n")
+    .replace(/\s+(?=(?:中文名|学名|其他可能|候选名称|菌盖形态|边缘特征|菌肉与变色|菌柄特征|菌褶|菌孔|生境|把握程度|风险提醒)[：:])/g, "\n");
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim().replace(/^[-•]+\s*/, ""))
+    .filter(Boolean)
+    .slice(0, 24);
 }
 
 export async function recognizeWithBaidu({ imageSrc, guideEntries = [], localCandidates = [], timeoutMs = DEFAULT_TIMEOUT_MS, config = getBaiduConfig() }) {
