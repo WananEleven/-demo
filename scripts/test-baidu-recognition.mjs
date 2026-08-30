@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { parseBaiduSse, recognizeWithBaidu, saveBaiduConfig, getBaiduConfig, clearBaiduConfig } from "../app/assets/baidu-recognition.js";
+import {
+  parseBaiduSse,
+  parseMushroomCountResponse,
+  recognizeWithBaidu,
+  estimateMushroomCount,
+  saveBaiduConfig,
+  getBaiduConfig,
+  clearBaiduConfig,
+} from "../app/assets/baidu-recognition.js";
 
 const mushroomSse = [
   'data:{"result":{"description":"是否为蘑菇：是\\n候选：1. 牛肝菌（Boletus），把握程度：中等\\n支持特征：菌盖褐色，菌柄粗壮。"}}',
@@ -51,6 +59,58 @@ assert.equal(sent.search_result, true);
 assert.equal(sent.baike_result, true);
 assert.equal(sent.messages[0].content[0].image_url.url, "data:image/jpeg;base64,////");
 
+const highCount = parseMushroomCountResponse([
+  'data:{"result":{"content":"```json\\n{\\"is_mushroom\\":true,\\"visible_count\\":4,\\"certainty\\":\\"high\\",\\"occluded\\":false,\\"reason\\":\\"四朵彼此分开且清晰可见。\\"}\\n```"}}',
+  "data:[DONE]",
+].join("\n"));
+assert.deepEqual(highCount, {
+  is_mushroom: true,
+  visible_count: 4,
+  certainty: "high",
+  occluded: false,
+  reason: "四朵彼此分开且清晰可见。",
+  canPrefill: true,
+  status: "estimated",
+});
+
+const nonMushroomCount = parseMushroomCountResponse('{"is_mushroom":false,"visible_count":0,"certainty":"low","occluded":false,"reason":"画面主体是猫。"}');
+assert.equal(nonMushroomCount.status, "not_mushroom");
+assert.equal(nonMushroomCount.canPrefill, false);
+
+const lowCount = parseMushroomCountResponse('{"is_mushroom":true,"visible_count":3,"certainty":"low","occluded":false,"reason":"只能大致看到。"}');
+assert.equal(lowCount.status, "uncertain");
+assert.equal(lowCount.canPrefill, false);
+const occludedCount = parseMushroomCountResponse('{"is_mushroom":true,"visible_count":3,"certainty":"high","occluded":true,"reason":"多朵被遮挡。"}');
+assert.equal(occludedCount.status, "uncertain");
+assert.equal(occludedCount.canPrefill, false);
+
+assert.throws(() => parseMushroomCountResponse("百度暂时只返回了说明文字，没有 JSON。"), (error) => error.code === "BAIDU_COUNT_INVALID_RESPONSE");
+
+let countRequest;
+globalThis.fetch = async (url, options) => {
+  countRequest = { url, options };
+  return new Response('{"is_mushroom":true,"visible_count":2,"certainty":"medium","occluded":false,"reason":"两朵清晰可见。"}', { status: 200, headers: { "content-type": "application/json" } });
+};
+const estimated = await estimateMushroomCount({
+  imageSrc: "data:image/jpeg;base64,////",
+  config: getBaiduConfig(storage),
+});
+assert.equal(estimated.visible_count, 2);
+assert.equal(estimated.canPrefill, true);
+assert.equal(countRequest.url, "https://cfc.example.test/proxy");
+assert.equal(countRequest.options.headers["X-Baidu-Api-Key"], "test-api-key");
+const countSent = JSON.parse(countRequest.options.body);
+assert.match(countSent.messages[0].content[1].text, /is_mushroom/);
+assert.match(countSent.messages[0].content[1].text, /visible_count/);
+
+globalThis.fetch = async () => {
+  throw new Error("offline");
+};
+await assert.rejects(
+  estimateMushroomCount({ imageSrc: "data:image/jpeg;base64,////", config: getBaiduConfig(storage) }),
+  (error) => error.code === "BAIDU_NETWORK_ERROR",
+);
+
 globalThis.fetch = originalFetch;
 clearBaiduConfig(storage);
 
@@ -66,4 +126,4 @@ for (const staleCopy of [
 ]) {
   assert.equal(runtimeBundle.includes(staleCopy), false, `runtime bundle still contains stale recognition copy: ${staleCopy}`);
 }
-console.log("Baidu client and runtime priority checks passed: mushroom, non-mushroom, SSE aggregation, request options and Baidu-first copy.");
+console.log("Baidu client and runtime checks passed: Baidu-first recognition, count parsing, safety gates, network failure and request options.");

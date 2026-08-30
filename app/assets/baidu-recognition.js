@@ -11,6 +11,7 @@
 const STORAGE_KEY = "huangshui-baidu-recognition-config-v1";
 const DEFAULT_TIMEOUT_MS = 32_000;
 const MAX_IMAGE_CHARS = 12 * 1024 * 1024;
+const COUNT_PROMPT = "请只返回一个 JSON 对象，不要返回 Markdown、代码块或额外解释。严格使用以下字段：is_mushroom（布尔值）、visible_count（整数）、certainty（只能是 high、medium 或 low）、occluded（布尔值，表示是否存在会影响计数的严重遮挡）、reason（简短中文说明）。请判断画面主体是否为蘑菇或其他大型真菌；只有主体是蘑菇时才统计数量。visible_count 只统计画面中清晰可见、彼此可分辨的蘑菇个体，同一朵蘑菇不要重复计算，不能确定的不要猜测；非蘑菇时 visible_count 必须为 0，certainty 应为 low。";
 
 const makeError = (code, message) => {
   const error = new Error(message);
@@ -55,6 +56,149 @@ function readJsonDataLine(line) {
   } catch {
     return null;
   }
+}
+
+function stripJsonFence(value) {
+  return String(value || "")
+    .replace(/^\s*```(?:json)?\s*/iu, "")
+    .replace(/\s*```\s*$/u, "")
+    .trim();
+}
+
+function parseJsonObject(value) {
+  const text = stripJsonFence(value);
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    // Models occasionally add a short sentence before or after the object.
+    // Extract the first balanced object while respecting quoted braces.
+    const start = text.indexOf("{");
+    if (start < 0) return null;
+    let depth = 0;
+    let quoted = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index += 1) {
+      const character = text[index];
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') quoted = false;
+        continue;
+      }
+      if (character === '"') {
+        quoted = true;
+        continue;
+      }
+      if (character === "{") depth += 1;
+      if (character === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          try {
+            const parsed = JSON.parse(text.slice(start, index + 1));
+            return parsed && typeof parsed === "object" ? parsed : null;
+          } catch {
+            return null;
+          }
+        }
+      }
+    }
+    return null;
+  }
+}
+
+function booleanValue(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value !== "string") return null;
+  const text = value.trim().toLowerCase();
+  if (["true", "yes", "是", "有", "严重", "明显"].includes(text)) return true;
+  if (["false", "no", "否", "无", "没有", "不明显"].includes(text)) return false;
+  return null;
+}
+
+function certaintyValue(value) {
+  const text = String(value || "").trim().toLowerCase();
+  if (["high", "高", "高把握", "高置信", "很确定"].includes(text)) return "high";
+  if (["medium", "中", "中等", "中把握", "中置信", "一般"].includes(text)) return "medium";
+  if (["low", "低", "低把握", "低置信", "不确定"].includes(text)) return "low";
+  return null;
+}
+
+function countResultFromObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const nested = findFirst(value, ["count_result", "count", "result", "data"]);
+  if (nested && typeof nested === "object" && nested !== value) {
+    const parsed = countResultFromObject(nested);
+    if (parsed) return parsed;
+  }
+  const hasCountFields = ["is_mushroom", "visible_count", "certainty", "occluded", "reason"].some((key) => value[key] !== undefined);
+  if (!hasCountFields) return null;
+  const isMushroom = booleanValue(findFirst(value, ["is_mushroom", "isMushroom", "蘑菇"]));
+  const rawCount = findFirst(value, ["visible_count", "visibleCount", "mushroom_count", "mushroomCount", "数量", "count"]);
+  const countText = typeof rawCount === "number" ? rawCount : String(rawCount ?? "").trim();
+  const visibleCount = /^\d+$/.test(String(countText)) ? Number(countText) : Number.NaN;
+  const certainty = certaintyValue(findFirst(value, ["certainty", "confidence", "把握程度", "置信度"]));
+  const occluded = booleanValue(findFirst(value, ["occluded", "occlusion", "遮挡", "严重遮挡"]));
+  const reason = String(findFirst(value, ["reason", "说明", "判断依据"]) || "").trim();
+  return {
+    is_mushroom: isMushroom,
+    visible_count: Number.isInteger(visibleCount) && visibleCount >= 0 ? visibleCount : null,
+    certainty,
+    occluded,
+    reason,
+  };
+}
+
+function walkCountObjects(value, result = []) {
+  if (!value || typeof value !== "object") return result;
+  const parsed = countResultFromObject(value);
+  if (parsed) result.push(parsed);
+  if (Array.isArray(value)) value.forEach((item) => walkCountObjects(item, result));
+  else Object.values(value).forEach((item) => walkCountObjects(item, result));
+  return result;
+}
+
+function collectEmbeddedCountText(value, result) {
+  if (typeof value === "string") {
+    const parsed = parseJsonObject(value);
+    if (parsed) walkCountObjects(parsed, result);
+    return;
+  }
+  if (Array.isArray(value)) value.forEach((item) => collectEmbeddedCountText(item, result));
+}
+
+/**
+ * Parse the strict count object returned by Baidu. It accepts ordinary JSON,
+ * JSON embedded in a Markdown code block, and JSON objects carried in SSE
+ * packets. The UI can safely decide not to prefill when `canPrefill` is false.
+ */
+export function parseMushroomCountResponse(text) {
+  const source = String(text || "");
+  const packets = [];
+  for (const line of source.split(/\r?\n/)) {
+    const packet = readJsonDataLine(line);
+    if (packet) packets.push(packet);
+  }
+  const direct = parseJsonObject(source);
+  if (direct) packets.push(direct);
+  const candidates = [];
+  for (const packet of packets) {
+    walkCountObjects(packet, candidates);
+    for (const field of ["content", "answer", "description", "text", "result"]) {
+      const values = [];
+      collectNested(packet, [field], values);
+      values.forEach((value) => collectEmbeddedCountText(value, candidates));
+    }
+  }
+  if (candidates.length === 0) throw makeError("BAIDU_COUNT_INVALID_RESPONSE", "百度没有返回可解析的数量结果，请改为手动输入。 ");
+  const result = candidates[candidates.length - 1];
+  const canPrefill = result.is_mushroom === true && Number.isInteger(result.visible_count) && result.visible_count > 0 && (result.certainty === "high" || result.certainty === "medium") && result.occluded === false;
+  let status = "uncertain";
+  if (result.is_mushroom === false) status = "not_mushroom";
+  else if (canPrefill) status = "estimated";
+  return { ...result, canPrefill, status };
 }
 
 function asArray(value) {
@@ -286,6 +430,48 @@ export async function recognizeWithBaidu({ imageSrc, guideEntries = [], localCan
     if (error?.name === "AbortError") throw makeError("BAIDU_TIMEOUT", "百度联网识别等待超过 32 秒，请检查网络后重试。 ");
     if (error?.code) throw error;
     throw makeError("BAIDU_NETWORK_ERROR", "百度联网识别暂时无法连接，请检查手机网络后重试。 ");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Estimate the number of clearly visible mushrooms in one photo. This uses
+ * the same CFC proxy and on-device configuration as species recognition, but
+ * asks Baidu for a small machine-readable response so the calendar can keep
+ * the number editable and decline unsafe guesses.
+ */
+export async function estimateMushroomCount({ imageSrc, timeoutMs = DEFAULT_TIMEOUT_MS, config = getBaiduConfig() }) {
+  const apiKey = String(config?.apiKey || "").trim();
+  const proxyUrl = String(config?.proxyUrl || "").trim();
+  if (!apiKey || !proxyUrl) throw makeError("BAIDU_NOT_CONFIGURED", "尚未配置百度联网识别，请先完成百度 CFC 配置。 ");
+  if (!/^https:\/\//i.test(proxyUrl)) throw makeError("BAIDU_PROXY_INVALID", "百度 CFC 代理地址无效，请检查是否以 https:// 开头。 ");
+  if (typeof imageSrc !== "string" || !imageSrc.startsWith("data:image/")) throw makeError("BAIDU_IMAGE_INVALID", "当前照片格式暂不支持数量估算，请换一张 JPG、PNG 或 WebP。 ");
+  if (imageSrc.length > MAX_IMAGE_CHARS) throw makeError("BAIDU_IMAGE_TOO_LARGE", "照片尺寸过大，请压缩照片后重试。 ");
+
+  const body = {
+    messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: imageSrc } }, { type: "text", text: COUNT_PROMPT }] }],
+  };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(proxyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "text/event-stream, application/json", "X-Baidu-Api-Key": apiKey },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      let detail = "";
+      try { detail = JSON.parse(responseText)?.message || JSON.parse(responseText)?.error_msg || ""; } catch { /* keep generic */ }
+      throw makeError("BAIDU_HTTP_ERROR", `百度数量估算接口返回 ${response.status}${detail ? `：${detail}` : "，请稍后重试。"}`);
+    }
+    return parseMushroomCountResponse(responseText);
+  } catch (error) {
+    if (error?.name === "AbortError") throw makeError("BAIDU_TIMEOUT", "百度数量估算等待超过 32 秒，请检查网络后重试。 ");
+    if (error?.code) throw error;
+    throw makeError("BAIDU_NETWORK_ERROR", "百度数量估算暂时无法连接，请手动输入数量后重试。 ");
   } finally {
     clearTimeout(timer);
   }
